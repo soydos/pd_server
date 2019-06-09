@@ -4,6 +4,7 @@ use env_logger;
 use actix_web::{
     guard, web, middleware, App, Responder, HttpServer,
     HttpResponse,
+    middleware::cors::Cors,
     Result
 };
 use actix_web::http::{StatusCode};
@@ -16,6 +17,21 @@ struct GenericResponse {
 
 fn index() -> impl Responder {
     "yo!"
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct GameRequest {
+    decks: u8,
+    jokers: u8,
+    ruleset: String,
+}
+
+fn create_game(game: web::Json<GameRequest>) -> impl Responder {
+    info!("new game: {:?}", game);
+    let body = GenericResponse{
+        message: "new game created".to_string()
+    };
+    web::Json(body)
 }
 
 fn p404() -> Result<HttpResponse> {
@@ -40,8 +56,17 @@ fn main() -> std::io::Result<()> {
 
     HttpServer::new(|| App::new()
         .wrap(middleware::Logger::default())
+        .wrap(
+            Cors::new()
+                .allowed_origin("https://soydos.test")
+        )
         .service(
             web::resource("/").to(index))
+        .service(
+            web::resource("/game").route(
+                web::post().to(create_game)
+            )
+        )
         .default_service(
             // 404 for GET request
             web::resource("")
